@@ -26,17 +26,24 @@ sleep(0.03)
 ser.write("AT+PSWD123456")
 sleep(0.03)
 AvergSize=5
-data=[0 for i in xrange(AvergSize)]
+data1=[0 for i in xrange(AvergSize)]
+data2=[0 for i in xrange(AvergSize)]
+data3=[0 for i in xrange(AvergSize)]
 count=0
-Averg=-40
+Averg1=-40
+Averg2=-40
+Averg3=-40
+
 MinAverg=-50
 DisConFlag=0
 ConFlag=0
 TimeOut=0
+MaxDelta=8
 Dic_Addr_Rssi={}
 GPIO.output(DisConPin,False)
 Addres1='3CA308A0264D'
-
+Addres2='3CA3089EA12B' #target
+Addres3='3CA3089EA63B'
 
 
 def FindBLE(StrInput):
@@ -46,6 +53,26 @@ def FindBLE(StrInput):
        dic[temp[i][:12]]=temp[i][20:24]
     return dic
 
+
+def AvergRssi(Addr,DictAddrRssi,delta,PrevAverg,AverSize,Data,MinAver):
+    if Addr in DictAddrRssi:
+       RSSI=DictAddrRssi[Addr]
+       Data.pop(0)
+       try:
+         IntRSSI=int(RSSI)
+       except ValueError:
+         IntRSSI=int(PrevAverg)
+       PrivData=int(Data[-1])
+       if (((IntRSSI- PrivData >delta)or(PrivData-IntRSSI>delta))and (PrevAverg<MinAver)):
+         IntRSSI=int(PrevAverg)
+       Data.append(IntRSSI)  
+       PrevAverg=sum(Data)/AverSize
+       print("ADDRESS: " +Addr)
+       print("RSSI: %d\n"%(PrevAverg))
+
+       return True,PrevAverg
+    else:
+       return False,PrevAverg
 
 
 
@@ -85,32 +112,14 @@ while True :
     if (Find_Index!=-1):
      # print(received_data.split('OK+DIS0:'))
       Dic_Addr_Rssi= FindBLE(received_data)
-     # print(Dic_Addr_Rssi)
-      #Addres=received_data[8+Find_Index:20+Find_Index] 
-     # print( Addres,'3CA308A0264D',Addres=='3CA308A0264D')
-     # rssi=received_data[28+Find_Index:32+Find_Index]
-     # print("ADDRESS: " +Addres+"\n")
-     # print("RSSI: "+rssi+"\n")
-      if Addres1 in Dic_Addr_Rssi:
-        # sleep(1)
-         #ser.write("AT+CON3CA308A0264D")
-         #sleep(0.03)
-         ConFlag=1
-         #RSSI=received_data[28+Find_Index:32+Find_Index]
-         RSSI=Dic_Addr_Rssi[Addres1]
-         data.pop(0)
-         try:
-           IntRSSI=int(RSSI)
-         except ValueError:
-           IntRSSI=int(Averg)
-         PrivData=int(data[-1])
-         if (((IntRSSI- PrivData >8)or(PrivData-IntRSSI>8))and (Averg<MinAverg)):
-           IntRSSI=int(Averg)
-         data.append(IntRSSI)
-         print("ADDRESS: " +Addres1+"\n")
-         Averg=sum(data)/AvergSize
-         print("RSSI: %d\n"%(Averg))
-         display.ShowLCD_BarGraph(Averg,-120,5,2)
+      #print(Dic_Addr_Rssi)
+      f1,Averg1=AvergRssi(Addres1,Dic_Addr_Rssi,MaxDelta,Averg1,AvergSize,data1,MinAverg)
+      f2,Averg2=AvergRssi(Addres2,Dic_Addr_Rssi,MaxDelta,Averg2,AvergSize,data2,MinAverg)
+      f3,Averg3=AvergRssi(Addres3,Dic_Addr_Rssi,MaxDelta,Averg3,AvergSize,data3,MinAverg)
+   
+      if f1:
+       # ConFlag=1
+        display.ShowLCD_BarGraph(Averg1,-120,5,2)
    # write_data=input("Please enter a command AT as string:\n")
    # print (write_data)
     if not  ConFlag:
