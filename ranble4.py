@@ -14,7 +14,7 @@ display=lcddriver.lcd()
 #GPIO.setwarnings(False)
 display.lcd_display_string("The Target Range",1)
 
-ser = serial.Serial ("/dev/ttyS0",9600, timeout=2) #Open port with baud rate
+ser = serial.Serial ("/dev/ttyS0",9600,timeout=2) #Open port with baud rate
 #ser.write("AT+RENEW")
 #sleep(1)
 ser.write("AT+RESET")
@@ -39,6 +39,7 @@ DisConFlag=0
 ConFlag=0
 TimeOut=0
 MaxDelta=8
+flagRecv=0
 Dic_Addr_Rssi={}
 GPIO.output(DisConPin,False)
 Addres1='3CA308A0264D'
@@ -90,18 +91,22 @@ while True :
     received_data += ser.read(data_left)
      # temp=received_data.strip()
     Find_Index=received_data.find('OK+DIS0:')
-   # print(Find_Index)
-    #print(received_data.split())
+    #print(Find_Index)
+   # print(received_data)
   #  if ConFlag :
    #    if received_data.find('DONE')!=-1:
     #      ConFlag=0
      #     GPIO.output(7,False)
 
     #else:
-    rcevRssi=received_data.find('START1')
+   # rcevRssi=received_data.find('OK+CONNA')
+   # if (rcevRssi!=-1):
+    #    sleep(1)
+     #   continue
+    rcevRssi=received_data.find('START')
     DisConFlag=(rcevRssi!=-1)
     if DisConFlag:
-      print("Iam rcevRssi: "+received_data[rcevRssi+6:rcevRssi+9])
+      print("Iam rcevRssi"+received_data[rcevRssi+5]+" :"+received_data[rcevRssi+6:rcevRssi+9])
       GPIO.output(DisConPin,True)
       sleep(0.03)
       GPIO.output(DisConPin,False)
@@ -116,10 +121,14 @@ while True :
       f1,Averg1=AvergRssi(Addres1,Dic_Addr_Rssi,MaxDelta,Averg1,AvergSize,data1,MinAverg)
       f2,Averg2=AvergRssi(Addres2,Dic_Addr_Rssi,MaxDelta,Averg2,AvergSize,data2,MinAverg)
       f3,Averg3=AvergRssi(Addres3,Dic_Addr_Rssi,MaxDelta,Averg3,AvergSize,data3,MinAverg)
-   
-      if f1:
-       # ConFlag=1
-        display.ShowLCD_BarGraph(Averg1,-120,5,2)
+      if flagRecv:
+        if f1:
+          ConFlag=1  
+      elif f3:
+          ConFlag=3
+      flagRecv=not flagRecv
+      if f2:
+          display.ShowLCD_BarGraph(Averg2,-120,5,2)
    # write_data=input("Please enter a command AT as string:\n")
    # print (write_data)
     if not  ConFlag:
@@ -128,7 +137,11 @@ while True :
     else:
      # ConFlag=0
      if count ==1:
-        ser.write("AT+CON"+Addres1)
+        if ConFlag==1:
+          adr=Addres1
+        else:
+          adr=Addres3
+        ser.write("AT+CON"+adr)
         count=0
         ConFlag=0
      else:
