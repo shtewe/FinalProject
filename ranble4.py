@@ -9,7 +9,11 @@ GPIO.setwarnings(False)
 
 GPIO.setmode(GPIO.BOARD)
 DisConPin=7
+LeftPin=11
+RightPin=13
 GPIO.setup(DisConPin, GPIO.OUT)
+GPIO.setup(LeftPin, GPIO.OUT)
+GPIO.setup(RightPin, GPIO.OUT)
 display=lcddriver.lcd()
 #GPIO.setwarnings(False)
 display.lcd_display_string("The Target Range",1)
@@ -29,6 +33,7 @@ AvergSize=5
 data1=[0 for i in xrange(AvergSize)]
 data2=[0 for i in xrange(AvergSize)]
 data3=[0 for i in xrange(AvergSize)]
+RecevierData=[0,0]
 count=0
 Averg1=-40
 Averg2=-40
@@ -42,6 +47,8 @@ MaxDelta=8
 flagRecv=0
 Dic_Addr_Rssi={}
 GPIO.output(DisConPin,False)
+GPIO.output(LeftPin,False)
+GPIO.output(RightPin,False)
 Addres1='3CA308A0264D'
 Addres2='3CA3089EA12B' #target
 Addres3='3CA3089EA63B'
@@ -63,9 +70,10 @@ def AvergRssi(Addr,DictAddrRssi,delta,PrevAverg,AverSize,Data,MinAver):
          IntRSSI=int(RSSI)
        except ValueError:
          IntRSSI=int(PrevAverg)
-       PrivData=int(Data[-1])
-       if (((IntRSSI- PrivData >delta)or(PrivData-IntRSSI>delta))and (PrevAverg<MinAver)):
-         IntRSSI=int(PrevAverg)
+      ## PrivData=int(Data[-1])
+      # print( PrivData,PrevAverg)
+     ##  if (((IntRSSI- PrivData >delta)or(PrivData-IntRSSI>delta))and (PrevAverg<MinAver)):
+      ##   IntRSSI=int(PrevAverg)
        Data.append(IntRSSI)  
        PrevAverg=sum(Data)/AverSize
        print("ADDRESS: " +Addr)
@@ -77,6 +85,26 @@ def AvergRssi(Addr,DictAddrRssi,delta,PrevAverg,AverSize,Data,MinAver):
 
 
 
+def DirectionShow():
+    if RecevierData[0]>RecevierData[1]:
+       if Averg1<Averg3:
+         GPIO.output(LeftPin,True)
+         GPIO.output(RightPin,False)
+         print("left")
+       else:
+         GPIO.output(LeftPin,False)
+         GPIO.output(RightPin,True)
+         print("right")
+
+    else:
+       if Averg1>Averg3:
+         GPIO.output(LeftPin,True)
+         GPIO.output(RightPin,False)
+         print("left")
+       else:
+         GPIO.output(LeftPin,False)
+         GPIO.output(RightPin,True)
+         print("right")
 
 
 
@@ -105,8 +133,11 @@ while True :
      #   continue
     rcevRssi=received_data.find('START')
     DisConFlag=(rcevRssi!=-1)
-    if DisConFlag:
-      print("Iam rcevRssi"+received_data[rcevRssi+5]+" :"+received_data[rcevRssi+6:rcevRssi+9])
+    if DisConFlag:     
+      RecevierData[int(received_data[rcevRssi+5])-1]=int(received_data[rcevRssi+6:rcevRssi+9])
+      print("Iam rcevRssi: ")
+      print(RecevierData)
+      #print("Iam rcevRssi"+received_data[rcevRssi+5]+":"+received_data[rcevRssi+6:rcevRssi+9])
       GPIO.output(DisConPin,True)
       sleep(0.03)
       GPIO.output(DisConPin,False)
@@ -129,6 +160,8 @@ while True :
       flagRecv=not flagRecv
       if f2:
           display.ShowLCD_BarGraph(Averg2,-120,5,2)
+      if (f1 and f3):
+          DirectionShow()
    # write_data=input("Please enter a command AT as string:\n")
    # print (write_data)
     if not  ConFlag:
