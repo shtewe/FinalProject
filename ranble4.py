@@ -9,8 +9,8 @@ GPIO.setwarnings(False)
 
 GPIO.setmode(GPIO.BOARD)
 DisConPin=7
-LeftPin=11
-RightPin=13
+LeftPin=13
+RightPin=11
 GPIO.setup(DisConPin, GPIO.OUT)
 GPIO.setup(LeftPin, GPIO.OUT)
 GPIO.setup(RightPin, GPIO.OUT)
@@ -86,25 +86,25 @@ def AvergRssi(Addr,DictAddrRssi,delta,PrevAverg,AverSize,Data,MinAver):
 
 
 def DirectionShow():
-    if RecevierData[0]>RecevierData[1]:
-       if Averg1<Averg3:
-         GPIO.output(LeftPin,True)
-         GPIO.output(RightPin,False)
-         print("left")
-       else:
-         GPIO.output(LeftPin,False)
-         GPIO.output(RightPin,True)
-         print("right")
+    if (RecevierData[0])<(RecevierData[1]):
+      # if Averg2<Averg3:
+       #  GPIO.output(LeftPin,True)
+        # GPIO.output(RightPin,False)
+        # print("left1")
+      # else:
+      GPIO.output(LeftPin,False)
+      GPIO.output(RightPin,True)
+      print("right1")
 
     else:
-       if Averg1>Averg3:
-         GPIO.output(LeftPin,True)
-         GPIO.output(RightPin,False)
-         print("left")
-       else:
-         GPIO.output(LeftPin,False)
-         GPIO.output(RightPin,True)
-         print("right")
+      # if Averg1>Averg3:
+      GPIO.output(LeftPin,True)
+      GPIO.output(RightPin,False)
+      print("left2")
+      # else:
+       #  GPIO.output(LeftPin,False)
+        # GPIO.output(RightPin,True)
+         #print("right2")
 
 
 
@@ -160,7 +160,6 @@ while True :
       flagRecv=not flagRecv
       if f2:
           display.ShowLCD_BarGraph(Averg2,-120,5,2)
-      if (f1 and f3):
           DirectionShow()
    # write_data=input("Please enter a command AT as string:\n")
    # print (write_data)
