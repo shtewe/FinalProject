@@ -35,6 +35,7 @@ data2=[0 for i in xrange(AvergSize)]
 data3=[0 for i in xrange(AvergSize)]
 RecevierData=[0,0]
 count=0
+count2=0
 Averg1=-40
 Averg2=-40
 Averg3=-40
@@ -52,7 +53,7 @@ GPIO.output(RightPin,False)
 Addres1='3CA308A0264D'
 Addres2='3CA3089EA12B' #target
 Addres3='3CA3089EA63B'
-
+f4=0
 
 def FindBLE(StrInput):
     dic={}
@@ -86,33 +87,67 @@ def AvergRssi(Addr,DictAddrRssi,delta,PrevAverg,AverSize,Data,MinAver):
 
 
 def DirectionShow():
-    if (RecevierData[0])<(RecevierData[1]):
-      # if Averg2<Averg3:
-       #  GPIO.output(LeftPin,True)
-        # GPIO.output(RightPin,False)
-        # print("left1")
-      # else:
-      GPIO.output(LeftPin,False)
-      GPIO.output(RightPin,True)
-      print("right1")
+    if (RecevierData[0])>(RecevierData[1]):
+       if Averg1>Averg3:
+         GPIO.output(LeftPin,True)
+         GPIO.output(RightPin,False)
+         print("left1")
+       else:
+         GPIO.output(LeftPin,False)
+         GPIO.output(RightPin,True)
+         print("right1")
 
     else:
-      # if Averg1>Averg3:
-      GPIO.output(LeftPin,True)
-      GPIO.output(RightPin,False)
-      print("left2")
-      # else:
-       #  GPIO.output(LeftPin,False)
-        # GPIO.output(RightPin,True)
-         #print("right2")
+      if Averg1<Averg3:
+        GPIO.output(LeftPin,True)
+        GPIO.output(RightPin,False)
+        print("left2")
+      else:
+        GPIO.output(LeftPin,False)
+        GPIO.output(RightPin,True)
+        print("right2")
 
+
+def GetReceiverData():
+  i=1
+  cont=0
+  while cont<20:
+      if i==1:
+        adr=Addres1
+      else:
+        adr=Addres3
+
+      ser.write("AT+CON"+adr)
+      sleep(0.5)
+      received_data =ser.read()           #read serial por
+      sleep(0.03)
+      data_left =ser.inWaiting()          #check for remaining byte
+      received_data += ser.read(data_left)
+      rcevRssi=received_data.find('START')
+      DisConFlag=(rcevRssi!=-1)
+      if DisConFlag:
+        RecevierData[int(received_data[rcevRssi+5])-1]=int(received_data[rcevRssi+6:rcevRssi+9])
+        print("Iam rcevRssi: ")
+        print(RecevierData)
+        GPIO.output(DisConPin,True)
+        sleep(0.03)
+        GPIO.output(DisConPin,False)
+        DisConFlag=0
+
+        if i==2:
+          return True
+        else:
+           i=2
+      else:
+        cont+=1
+  return False
 
 
 
 
 
 while True :
-  
+      
     received_data =ser.read()           #read serial por
     sleep(0.03)
     data_left =ser.inWaiting()          #check for remaining byte
@@ -131,17 +166,17 @@ while True :
    # if (rcevRssi!=-1):
     #    sleep(1)
      #   continue
-    rcevRssi=received_data.find('START')
-    DisConFlag=(rcevRssi!=-1)
-    if DisConFlag:     
-      RecevierData[int(received_data[rcevRssi+5])-1]=int(received_data[rcevRssi+6:rcevRssi+9])
-      print("Iam rcevRssi: ")
-      print(RecevierData)
+  # # rcevRssi=received_data.find('START')
+   ## DisConFlag=(rcevRssi!=-1)
+   ## if DisConFlag:     
+     ## RecevierData[int(received_data[rcevRssi+5])-1]=int(received_data[rcevRssi+6:rcevRssi+9])
+     ## print("Iam rcevRssi: ")
+     ## print(RecevierData)
       #print("Iam rcevRssi"+received_data[rcevRssi+5]+":"+received_data[rcevRssi+6:rcevRssi+9])
-      GPIO.output(DisConPin,True)
-      sleep(0.03)
-      GPIO.output(DisConPin,False)
-      DisConFlag=0
+     ## GPIO.output(DisConPin,True)
+     ## sleep(0.03)
+     ## GPIO.output(DisConPin,False)
+     ## DisConFlag=0
     #  ConFlag=0
 
  
@@ -160,26 +195,35 @@ while True :
       flagRecv=not flagRecv
       if f2:
           display.ShowLCD_BarGraph(Averg2,-120,5,2)
-          DirectionShow()
+          if (f3 and f1 and (not f4)and((Averg2-data2[-1])<0)):
+            f4=GetReceiverData()
+          if f4:
+            DirectionShow()
+            if count2==20:
+               count2=0
+               f4=0
+            else:
+               count2+=1
+               
    # write_data=input("Please enter a command AT as string:\n")
    # print (write_data)
-    if not  ConFlag:
-      ser.write("AT+DISC?")              #transmit data serially
+  # # if not  ConFlag:
+    ser.write("AT+DISC?")              #transmit data serially
      # ser.write("AT+CON3CA308A0264D")
-    else:
+   ## else:
      # ConFlag=0
-     if count ==1:
-        if ConFlag==1:
-          adr=Addres1
-        else:
-          adr=Addres3
-        ser.write("AT+CON"+adr)
-        count=0
-        ConFlag=0
-     else:
-        count+=1
+    ## if count ==1:
+      ##  if ConFlag==1:
+        ##  adr=Addres1
+      ##  else:
+        ##  adr=Addres3
+      ##  ser.write("AT+CON"+adr)
+      ##  count=0
+      ##  ConFlag=0
+    ## else:
+      ##  count+=1
      
-
+   
     sleep(1)
 
 
