@@ -11,6 +11,13 @@ GPIO.setmode(GPIO.BOARD)
 DisConPin=7
 LeftPin=13
 RightPin=11
+ForwardPin=12
+BackwardPin=16
+OutOfRange=15
+
+GPIO.setup(ForwardPin, GPIO.OUT)
+GPIO.setup(BackwardPin, GPIO.OUT)
+GPIO.setup(OutOfRange, GPIO.OUT)
 GPIO.setup(DisConPin, GPIO.OUT)
 GPIO.setup(LeftPin, GPIO.OUT)
 GPIO.setup(RightPin, GPIO.OUT)
@@ -43,18 +50,28 @@ Averg3=-40
 MinAverg=-50
 DisConFlag=0
 ConFlag=0
+BarCount=0
+PrevBarCount=0
 TimeOut=0
 MaxDelta=8
 flagRecv=0
 Dic_Addr_Rssi={}
+GPIO.output(OutOfRange,False)
 GPIO.output(DisConPin,False)
 GPIO.output(LeftPin,False)
 GPIO.output(RightPin,False)
+GPIO.output(ForwardPin,False)
+GPIO.output(BackwardPin,False)
 Addres1='3CA308A0264D'
 Addres2='3CA3089EA12B' #target
 Addres3='3CA3089EA63B'
-f4=0
-
+f4=1
+f5=0
+con1=1
+con2=1
+conect1=0
+conect2=0
+f2=0
 def FindBLE(StrInput):
     dic={}
     temp=StrInput.split('OK+DIS0:')
@@ -98,7 +115,7 @@ def DirectionShow():
          print("right1")
 
     else:
-      if Averg1<Averg3:
+      if Averg2>Averg3:
         GPIO.output(LeftPin,True)
         GPIO.output(RightPin,False)
         print("left2")
@@ -107,16 +124,19 @@ def DirectionShow():
         GPIO.output(RightPin,True)
         print("right2")
 
-
-def GetReceiverData():
-  i=1
+    if PrevBarCount <BarCount:
+       print("forward")
+       GPIO.output(ForwardPin,True)
+       GPIO.output(BackwardPin,False)
+    elif PrevBarCount>BarCount:
+       GPIO.output(ForwardPin,False)
+       GPIO.output(BackwardPin,True)
+       print("backward")
+def GetReceiverData(adr):
+  
   cont=0
   while cont<20:
-      if i==1:
-        adr=Addres1
-      else:
-        adr=Addres3
-
+      
       ser.write("AT+CON"+adr)
       sleep(0.5)
       received_data =ser.read()           #read serial por
@@ -133,11 +153,7 @@ def GetReceiverData():
         sleep(0.03)
         GPIO.output(DisConPin,False)
         DisConFlag=0
-
-        if i==2:
-          return True
-        else:
-           i=2
+        return True
       else:
         cont+=1
   return False
@@ -187,24 +203,44 @@ while True :
       f1,Averg1=AvergRssi(Addres1,Dic_Addr_Rssi,MaxDelta,Averg1,AvergSize,data1,MinAverg)
       f2,Averg2=AvergRssi(Addres2,Dic_Addr_Rssi,MaxDelta,Averg2,AvergSize,data2,MinAverg)
       f3,Averg3=AvergRssi(Addres3,Dic_Addr_Rssi,MaxDelta,Averg3,AvergSize,data3,MinAverg)
-      if flagRecv:
-        if f1:
-          ConFlag=1  
-      elif f3:
-          ConFlag=3
-      flagRecv=not flagRecv
+     ## if flagRecv:
+      ##  if f1:
+       ##   ConFlag=1  
+     ## elif f3:
+      ##    ConFlag=3
+     ## flagRecv=not flagRecv
+      if f4:
+     # if (f4)and((Averg2-data2[-1])<0):
+        if f1 and con1:
+          conect1=GetReceiverData(Addres1)
+          if conect1:
+             con1=0
+        if f3 and con2:
+          conect2=GetReceiverData(Addres3)
+          if conect2:
+             con2=0
+
+        
       if f2:
-          display.ShowLCD_BarGraph(Averg2,-120,5,2)
-          if (f3 and f1 and (not f4)and((Averg2-data2[-1])<0)):
-            f4=GetReceiverData()
-          if f4:
+          BarCount=display.ShowLCD_BarGraph(Averg2,-120,5,2)
+         # print(BarCount)
+          if(f5):
             DirectionShow()
-            if count2==20:
+          if (conect1 and conect2 and f4):
+            f5=1
+            f4=0
+          else:
+            if count2==40:
                count2=0
-               f4=0
+               f4=1
+               con1=1
+               con2=1
+
             else:
                count2+=1
-               
+          GPIO.output(OutOfRange,False)
+          TimeOut=0
+     
    # write_data=input("Please enter a command AT as string:\n")
    # print (write_data)
   # # if not  ConFlag:
@@ -222,8 +258,16 @@ while True :
       ##  ConFlag=0
     ## else:
       ##  count+=1
-     
-   
+    PrevBarCount=BarCount
+    if f2==0: 
+      if  TimeOut==10:
+         GPIO.output(OutOfRange,True)
+         GPIO.output(LeftPin,False)
+         GPIO.output(RightPin,False)
+         GPIO.output(ForwardPin,False)
+         GPIO.output(BackwardPin,False)
+      else:
+         TimeOut+=1
     sleep(1)
 
 

@@ -132,6 +132,7 @@ class lcd:
        AddrMax=Addr+0x0f
        Value+=40
        MaxV+=40
+       count=0
        if Value < MaxV:
           Value=-1*MaxV
        elif Value >0:
@@ -145,9 +146,10 @@ class lcd:
           self.lcd_write(0xff,Rs)
           Value-=Step
           Addr+=1
+          count+=1
       
        while(Addr<=AddrMax):
           self.lcd_write(Addr)
           self.lcd_write(0xfe,Rs)
           Addr+=1
-      
+       return count
