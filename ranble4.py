@@ -53,7 +53,7 @@ ConFlag=0
 BarCount=0
 PrevBarCount=0
 TimeOut=0
-MaxDelta=8
+MaxDelta=2
 flagRecv=0
 Dic_Addr_Rssi={}
 GPIO.output(OutOfRange,False)
@@ -74,6 +74,13 @@ conect1=0
 conect2=0
 f2=0
 AddresList=[]
+
+def CheackIfCloser():
+   Clos1=(data1[-2]-data1[-1])>MaxDelta
+   Clos2=(data2[-2]-data2[-1])>MaxDelta
+   Clos3=(data3[-2]-data3[-1])>MaxDelta
+   return Clos1,Clos2,Clos3
+
 def FindBLE(StrInput):
     dic={}
     adrList=[]
@@ -106,8 +113,9 @@ def AvergRssi(Addr,RSSI,PrevAverg,AverSize,Data):
 
 
 def DirectionShow():
-    if (RecevierData[0])>(RecevierData[1]):
-       if Averg2<Averg3:
+    CloseTo1,CloseTo2,CloseTo3= CheackIfCloser()
+    if (RecevierData[0])<(RecevierData[1]):
+       if (CloseTo2 and CloseTo3 and(not CloseTo1))or(CloseTo1 and(not(CloseTo2 and CloseTo3))):
          GPIO.output(LeftPin,True)
          GPIO.output(RightPin,False)
          print("left1")
@@ -117,7 +125,7 @@ def DirectionShow():
          print("right1")
 
     else:
-      if Averg2<Averg3:
+      if (CloseTo2 and CloseTo3 and(not CloseTo1))or(not(CloseTo2 and CloseTo3)):
         GPIO.output(LeftPin,True)
         GPIO.output(RightPin,False)
         print("left2")
@@ -126,11 +134,13 @@ def DirectionShow():
         GPIO.output(RightPin,True)
         print("right2")
 
-    if PrevBarCount <BarCount:
+   # if PrevBarCount <BarCount:
+    if CloseTo2 : 
        print("forward")
        GPIO.output(ForwardPin,True)
        GPIO.output(BackwardPin,False)
-    elif PrevBarCount>BarCount:
+#    elif PrevBarCount>BarCount:
+    else:
        GPIO.output(ForwardPin,False)
        GPIO.output(BackwardPin,True)
        print("backward")
@@ -255,7 +265,7 @@ while True :
             DirectionShow()
           if (conect1 and conect2 and f4):
             f5=1
-            f4=0
+           ## f4=0
           else:
             if count2==20:
                count2=0
