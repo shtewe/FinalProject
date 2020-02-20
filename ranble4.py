@@ -65,6 +65,7 @@ GPIO.output(BackwardPin,False)
 Addres1='3CA308A0264D'
 Addres2='3CA3089EA12B' #target
 Addres3='3CA3089EA63B'
+Address=[Addres1,Addres2,Addres3]
 f4=1
 f5=0
 con1=1
@@ -72,17 +73,20 @@ con2=1
 conect1=0
 conect2=0
 f2=0
+AddresList=[]
 def FindBLE(StrInput):
     dic={}
+    adrList=[]
     temp=StrInput.split('OK+DIS0:')
     for  i in range(1,len(temp)):
-       dic[temp[i][:12]]=temp[i][20:24]
-    return dic
+       addr=temp[i][:12]
+       if addr in Address:
+         dic[addr]=temp[i][20:24]
+         adrList.append(addr)
+    return dic,adrList
 
 
-def AvergRssi(Addr,DictAddrRssi,delta,PrevAverg,AverSize,Data,MinAver):
-    if Addr in DictAddrRssi:
-       RSSI=DictAddrRssi[Addr]
+def AvergRssi(Addr,RSSI,PrevAverg,AverSize,Data):
        Data.pop(0)
        try:
          IntRSSI=int(RSSI)
@@ -97,15 +101,13 @@ def AvergRssi(Addr,DictAddrRssi,delta,PrevAverg,AverSize,Data,MinAver):
        print("ADDRESS: " +Addr)
        print("RSSI: %d\n"%(PrevAverg))
 
-       return True,PrevAverg
-    else:
-       return False,PrevAverg
+       return PrevAverg
 
 
 
 def DirectionShow():
     if (RecevierData[0])>(RecevierData[1]):
-       if Averg1>Averg3:
+       if Averg2<Averg3:
          GPIO.output(LeftPin,True)
          GPIO.output(RightPin,False)
          print("left1")
@@ -115,7 +117,7 @@ def DirectionShow():
          print("right1")
 
     else:
-      if Averg2>Averg3:
+      if Averg2<Averg3:
         GPIO.output(LeftPin,True)
         GPIO.output(RightPin,False)
         print("left2")
@@ -133,20 +135,33 @@ def DirectionShow():
        GPIO.output(BackwardPin,True)
        print("backward")
 def GetReceiverData(adr):
-  
+  indexx=0
+  value=0
   cont=0
-  while cont<20:
-      
-      ser.write("AT+CON"+adr)
-      sleep(0.5)
-      received_data =ser.read()           #read serial por
-      sleep(0.03)
-      data_left =ser.inWaiting()          #check for remaining byte
-      received_data += ser.read(data_left)
-      rcevRssi=received_data.find('START')
+ # received_data =ser.read()
+  data_left =ser.inWaiting() 
+  received_data = ser.read(data_left)
+  while cont<5:
+      try: 
+         ser.write("AT+CON"+adr)
+         sleep(0.5)
+         received_data =ser.read()           #read serial por
+         sleep(0.03)
+         data_left =ser.inWaiting()          #check for remaining byte
+         received_data += ser.read(data_left)
+         rcevRssi=received_data.find('START')
+
+      except ValueError:
+         return False
+
       DisConFlag=(rcevRssi!=-1)
       if DisConFlag:
-        RecevierData[int(received_data[rcevRssi+5])-1]=int(received_data[rcevRssi+6:rcevRssi+9])
+        try:
+          indexx=int(received_data[rcevRssi+5])
+          value=int(received_data[rcevRssi+6:rcevRssi+9])
+        except ValueError:
+          return False
+        RecevierData[indexx-1]=value
         print("Iam rcevRssi: ")
         print(RecevierData)
         GPIO.output(DisConPin,True)
@@ -198,11 +213,23 @@ while True :
  
     if (Find_Index!=-1):
      # print(received_data.split('OK+DIS0:'))
-      Dic_Addr_Rssi= FindBLE(received_data)
+      Dic_Addr_Rssi,AddresList= FindBLE(received_data)
       #print(Dic_Addr_Rssi)
-      f1,Averg1=AvergRssi(Addres1,Dic_Addr_Rssi,MaxDelta,Averg1,AvergSize,data1,MinAverg)
-      f2,Averg2=AvergRssi(Addres2,Dic_Addr_Rssi,MaxDelta,Averg2,AvergSize,data2,MinAverg)
-      f3,Averg3=AvergRssi(Addres3,Dic_Addr_Rssi,MaxDelta,Averg3,AvergSize,data3,MinAverg)
+      if Addres1 in AddresList:
+         f1=1
+         Averg1=AvergRssi(Addres1,Dic_Addr_Rssi[Addres1],Averg1,AvergSize,data1)  # (Addr,RSSI,PrevAverg,AverSize,Data)
+      else:
+         f1=0
+      if Addres2 in AddresList:
+         f2=1
+         Averg2=AvergRssi(Addres2,Dic_Addr_Rssi[Addres2],Averg2,AvergSize,data2)
+      else:
+         f2=0
+      if Addres3 in AddresList:
+         f3=1
+         Averg3=AvergRssi(Addres3,Dic_Addr_Rssi[Addres3],Averg3,AvergSize,data3)
+      else:
+         f3=0
      ## if flagRecv:
       ##  if f1:
        ##   ConFlag=1  
@@ -222,7 +249,7 @@ while True :
 
         
       if f2:
-          BarCount=display.ShowLCD_BarGraph(Averg2,-120,5,2)
+          BarCount=display.ShowLCD_BarGraph(Averg2,-88,3,2)
          # print(BarCount)
           if(f5):
             DirectionShow()
@@ -230,7 +257,7 @@ while True :
             f5=1
             f4=0
           else:
-            if count2==40:
+            if count2==20:
                count2=0
                f4=1
                con1=1
