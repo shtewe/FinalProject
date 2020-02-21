@@ -36,10 +36,15 @@ ser.write("AT+ROLE1")
 sleep(0.03)
 ser.write("AT+PSWD123456")
 sleep(0.03)
-AvergSize=5
+AvergSize=3
+SaveAvergL=3
 data1=[0 for i in xrange(AvergSize)]
 data2=[0 for i in xrange(AvergSize)]
 data3=[0 for i in xrange(AvergSize)]
+SavedAverg1=[0 for i in xrange(SaveAvergL)]
+SavedAverg2=[0 for i in xrange(SaveAvergL)]
+SavedAverg3=[0 for i in xrange(SaveAvergL)]
+
 RecevierData=[0,0]
 count=0
 count2=0
@@ -47,13 +52,14 @@ Averg1=-40
 Averg2=-40
 Averg3=-40
 
-MinAverg=-50
+MinAverg=-45
 DisConFlag=0
 ConFlag=0
 BarCount=0
 PrevBarCount=0
 TimeOut=0
 MaxDelta=2
+MinDelta=0
 flagRecv=0
 Dic_Addr_Rssi={}
 GPIO.output(OutOfRange,False)
@@ -67,18 +73,67 @@ Addres2='3CA3089EA12B' #target
 Addres3='3CA3089EA63B'
 Address=[Addres1,Addres2,Addres3]
 f4=1
-f5=0
+f5=1
 con1=1
 con2=1
 conect1=0
 conect2=0
 f2=0
 AddresList=[]
+#CloseTo1=0
+#CloseTo2=0
+#CloseTo3=0
+#def CheackIfCloser():
+"""
 
+   if ((data1[-1]-Averg1)>0)and((data1[-2]-Averg1)>0):
+      Clos1=1
+   elif ((data1[-1]-Averg1)<0)and((data1[-2]-Averg1)<0):
+      Clos1=2
+   else:
+      Clos1=3
+
+   if ((data2[-1]-Averg2)>0)and((data2[-2]-Averg2)>0):
+      Clos2=1
+   elif ((data2[-1]-Averg2)<0)and((data2[-2]-Averg2)<0):
+      Clos2=2
+   else:
+      Clos2=3
+
+   if ((data3[-1]-Averg3)>0)and((data3[-2]-Averg3)>0):
+      Clos3=1
+   elif ((data3[-1]-Averg3)<0)and((data3[-2]-Averg3)<0):
+      Clos3=2
+   else:
+      Clos3=3
+
+   return Clos1,Clos2,Clos3
+"""
 def CheackIfCloser():
-   Clos1=(data1[-2]-data1[-1])>MaxDelta
-   Clos2=(data2[-2]-data2[-1])>MaxDelta
-   Clos3=(data3[-2]-data3[-1])>MaxDelta
+
+   if ((SavedAverg1[-1]-SavedAverg1[-2])>0)and((SavedAverg1[-2]-SavedAverg1[-3])>0):
+      Clos1=1
+   elif ((SavedAverg1[-1]-SavedAverg1[-2])<0)and((SavedAverg1[-2]-SavedAverg1[-3])<0):
+      Clos1=2
+   else:
+      Clos1=3
+
+    
+
+   if ((SavedAverg2[-1]-SavedAverg2[-2])>0)and((SavedAverg2[-2]-SavedAverg2[-3])>0):
+      Clos2=1
+   elif ((SavedAverg2[-1]-SavedAverg2[-2])<0)and((SavedAverg2[-2]-SavedAverg2[-3])<0):
+      Clos2=2
+   else:
+      Clos2=3
+
+   if ((SavedAverg3[-1]-SavedAverg3[-2])>0)and((SavedAverg3[-2]-SavedAverg3[-3])>0):
+      Clos3=1
+   elif ((SavedAverg3[-1]-SavedAverg3[-2])<0)and((SavedAverg3[-2]-SavedAverg3[-3])<0):
+      Clos3=2
+   else:
+      Clos3=3
+
    return Clos1,Clos2,Clos3
 
 def FindBLE(StrInput):
@@ -115,7 +170,7 @@ def AvergRssi(Addr,RSSI,PrevAverg,AverSize,Data):
 def DirectionShow():
     CloseTo1,CloseTo2,CloseTo3= CheackIfCloser()
     if (RecevierData[0])<(RecevierData[1]):
-       if (CloseTo2 and CloseTo3 and(not CloseTo1))or(CloseTo1 and(not(CloseTo2 and CloseTo3))):
+       if (CloseTo2 and CloseTo3 and(not CloseTo1))or(CloseTo1 and(not(CloseTo2 and CloseTo3)))or((Averg1>Averg3)and(not(CloseTo1 and CloseTo2 and CloseTo3))):
          GPIO.output(LeftPin,True)
          GPIO.output(RightPin,False)
          print("left1")
@@ -135,15 +190,20 @@ def DirectionShow():
         print("right2")
 
    # if PrevBarCount <BarCount:
-    if CloseTo2 : 
+    if CloseTo2==1 : 
        print("forward")
        GPIO.output(ForwardPin,True)
        GPIO.output(BackwardPin,False)
 #    elif PrevBarCount>BarCount:
-    else:
+    elif CloseTo2==2:
        GPIO.output(ForwardPin,False)
        GPIO.output(BackwardPin,True)
        print("backward")
+    else:
+       GPIO.output(ForwardPin,False)
+       GPIO.output(BackwardPin,False)
+       print("Stop")
+
 def GetReceiverData(adr):
   indexx=0
   value=0
@@ -227,17 +287,42 @@ while True :
       #print(Dic_Addr_Rssi)
       if Addres1 in AddresList:
          f1=1
+        ## temp=Averg1
+         SavedAverg1.pop(0)
          Averg1=AvergRssi(Addres1,Dic_Addr_Rssi[Addres1],Averg1,AvergSize,data1)  # (Addr,RSSI,PrevAverg,AverSize,Data)
+         SavedAverg1.append(Averg1)
+        ## if Averg1< MinAverg:
+         ##   Delta=MinDelta
+         ##else:
+          ##  Delta=MaxDelta
+        ## CloseTo1=(Averg1-temp)>Delta
       else:
          f1=0
       if Addres2 in AddresList:
          f2=1
+        ## temp=Averg2
+         SavedAverg2.pop(0)
          Averg2=AvergRssi(Addres2,Dic_Addr_Rssi[Addres2],Averg2,AvergSize,data2)
+         SavedAverg2.append(Averg2)
+        ## if Averg2< MinAverg:
+         ##   Delta=MinDelta
+        ## else:
+         ##   Delta=MaxDelta         
+         ##CloseTo2=(Averg2-temp)>Delta
       else:
          f2=0
       if Addres3 in AddresList:
          f3=1
+       ##  temp=Averg3
+         SavedAverg3.pop(0)
          Averg3=AvergRssi(Addres3,Dic_Addr_Rssi[Addres3],Averg3,AvergSize,data3)
+         SavedAverg3.append(Averg3)
+
+       ##  if Averg3< MinAverg:
+        ##    Delta=MinDelta
+        ## else:
+         ##   Delta=MaxDelta
+        ## CloseTo3=(Averg3-temp)>Delta
       else:
          f3=0
      ## if flagRecv:
