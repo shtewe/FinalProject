@@ -36,8 +36,8 @@ ser.write("AT+ROLE1")
 sleep(0.03)
 ser.write("AT+PSWD123456")
 sleep(0.03)
-AvergSize=3
-SaveAvergL=3
+AvergSize=5
+SaveAvergL=2
 data1=[0 for i in xrange(AvergSize)]
 data2=[0 for i in xrange(AvergSize)]
 data3=[0 for i in xrange(AvergSize)]
@@ -58,7 +58,7 @@ ConFlag=0
 BarCount=0
 PrevBarCount=0
 TimeOut=0
-MaxDelta=2
+MaxDelta=0
 MinDelta=0
 flagRecv=0
 Dic_Addr_Rssi={}
@@ -79,62 +79,67 @@ con2=1
 conect1=0
 conect2=0
 f2=0
+Step=2
+MaxV=-32
 AddresList=[]
 #CloseTo1=0
 #CloseTo2=0
 #CloseTo3=0
-#def CheackIfCloser():
+def countLeval(Value):
+       Value+=40
+       count=0
+       if Value < MaxV:
+          Value=-1*MaxV
+       elif Value >0:
+          Value =0
+       else:
+          Value*=-1
+
+       Value=(-1*MaxV)-Value
+       while(Value>0):
+          Value-=Step
+          count+=1
+       return count
 """
+def CheackIfCloser(data):
+   IsCloser=False
+   IsGoAway=False
+   IsStop=False
 
-   if ((data1[-1]-Averg1)>0)and((data1[-2]-Averg1)>0):
-      Clos1=1
-   elif ((data1[-1]-Averg1)<0)and((data1[-2]-Averg1)<0):
-      Clos1=2
-   else:
-      Clos1=3
 
-   if ((data2[-1]-Averg2)>0)and((data2[-2]-Averg2)>0):
-      Clos2=1
-   elif ((data2[-1]-Averg2)<0)and((data2[-2]-Averg2)<0):
-      Clos2=2
-   else:
-      Clos2=3
+   if (data[-1]-data[-2]>0)and(data[-2]-data[-3]>0)and(data[-3]-data[-4]>0):
+      IsCloser=True
+   elif (data[-1]-data[-2]<0)and(data[-2]-data[-3]<0)and(data[-3]-data[-4]<0):
+      IsGoAway=True
+   elif (data[-1]-data[-2]==0)and(data[-2]-data[-3]==0)and(data[-3]-data[-4]==0):
+      IsStop=True
 
-   if ((data3[-1]-Averg3)>0)and((data3[-2]-Averg3)>0):
-      Clos3=1
-   elif ((data3[-1]-Averg3)<0)and((data3[-2]-Averg3)<0):
-      Clos3=2
-   else:
-      Clos3=3
+   return IsCloser,IsGoAway,IsStop
 
-   return Clos1,Clos2,Clos3
 """
-def CheackIfCloser():
+def CheackIfCloser(SavedAverg):
+   IsCloser=False
+   IsGoAway=False
+#   IsStop=False
+   NewLevel=countLeval(SavedAverg[-1])
+   OldLevel=countLeval(SavedAverg[-2])
 
-   if ((SavedAverg1[-1]-SavedAverg1[-2])>0)and((SavedAverg1[-2]-SavedAverg1[-3])>0):
-      Clos1=1
-   elif ((SavedAverg1[-1]-SavedAverg1[-2])<0)and((SavedAverg1[-2]-SavedAverg1[-3])<0):
-      Clos1=2
+#   if ((SavedAverg[-1]-SavedAverg[-2])>0)and((SavedAverg[-2]-SavedAverg[-3])>0):
+#      IsCloser=True
+#   elif ((SavedAverg[-1]-SavedAverg[-2])<0)and((SavedAverg[-2]-SavedAverg[-3])<0):
+#      IsGoAway=True
+#   elif((SavedAverg[-1]-SavedAverg[-2])==0)and((SavedAverg[-2]-SavedAverg[-3])==0):
+#      IsStop=True
+   if (NewLevel>OldLevel):
+      IsCloser=True
    else:
-      Clos1=3
+      IsGoAway=True
+ #  else:
+  #    IsStop=True
+ 
 
-    
 
-   if ((SavedAverg2[-1]-SavedAverg2[-2])>0)and((SavedAverg2[-2]-SavedAverg2[-3])>0):
-      Clos2=1
-   elif ((SavedAverg2[-1]-SavedAverg2[-2])<0)and((SavedAverg2[-2]-SavedAverg2[-3])<0):
-      Clos2=2
-   else:
-      Clos2=3
-
-   if ((SavedAverg3[-1]-SavedAverg3[-2])>0)and((SavedAverg3[-2]-SavedAverg3[-3])>0):
-      Clos3=1
-   elif ((SavedAverg3[-1]-SavedAverg3[-2])<0)and((SavedAverg3[-2]-SavedAverg3[-3])<0):
-      Clos3=2
-   else:
-      Clos3=3
-
-   return Clos1,Clos2,Clos3
+   return IsCloser,IsGoAway
 
 def FindBLE(StrInput):
     dic={}
@@ -168,19 +173,22 @@ def AvergRssi(Addr,RSSI,PrevAverg,AverSize,Data):
 
 
 def DirectionShow():
-    CloseTo1,CloseTo2,CloseTo3= CheackIfCloser()
+    CloseTo1,IsGoAway1= CheackIfCloser(SavedAverg1)
+    CloseTo2,IsGoAway2= CheackIfCloser(SavedAverg2)
+    CloseTo3,IsGoAway3= CheackIfCloser(SavedAverg3)
+ #   if state2 !=-1:
     if (RecevierData[0])<(RecevierData[1]):
-       if (CloseTo2 and CloseTo3 and(not CloseTo1))or(CloseTo1 and(not(CloseTo2 and CloseTo3)))or((Averg1>Averg3)and(not(CloseTo1 and CloseTo2 and CloseTo3))):
+       if (CloseTo2 and CloseTo3 and IsGoAway1)or(CloseTo1 and IsGoAway2 and IsGoAway3)or((Averg1>Averg3)and IsGoAway1 and IsGoAway2 and IsGoAway3)or(CloseTo2 and CloseTo3 and CloseTo1 and (Averg1>Averg3)):
          GPIO.output(LeftPin,True)
          GPIO.output(RightPin,False)
          print("left1")
-       else:
+       else: 
          GPIO.output(LeftPin,False)
          GPIO.output(RightPin,True)
          print("right1")
 
     else:
-      if (CloseTo2 and CloseTo3 and(not CloseTo1))or(not(CloseTo2 and CloseTo3)):
+      if (CloseTo2 and CloseTo3 and IsGoAway1)or(IsGoAway2 and IsGoAway3 and (Averg1>Averg3))or(CloseTo2 and CloseTo3 and CloseTo1 and (Averg1>Averg3))or(IsGoAway2 and IsGoAway3 and(Averg1>Averg3)and IsGoAway1) :
         GPIO.output(LeftPin,True)
         GPIO.output(RightPin,False)
         print("left2")
@@ -190,19 +198,19 @@ def DirectionShow():
         print("right2")
 
    # if PrevBarCount <BarCount:
-    if CloseTo2==1 : 
+    if CloseTo2 : 
        print("forward")
        GPIO.output(ForwardPin,True)
        GPIO.output(BackwardPin,False)
 #    elif PrevBarCount>BarCount:
-    elif CloseTo2==2:
+    else :
        GPIO.output(ForwardPin,False)
        GPIO.output(BackwardPin,True)
        print("backward")
-    else:
-       GPIO.output(ForwardPin,False)
-       GPIO.output(BackwardPin,False)
-       print("Stop")
+   # elif IsStop2:
+    #   GPIO.output(ForwardPin,False)
+     #  GPIO.output(BackwardPin,False)
+      # print("Stop")
 
 def GetReceiverData(adr):
   indexx=0
