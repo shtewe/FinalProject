@@ -41,13 +41,22 @@ ser = serial.Serial ("/dev/ttyS0",9600,timeout=2) #Open port with baud rate
 
 
 AvergSize=5
-SaveAvergL=2
+SaveAvergL=5
 data1=[0 for i in xrange(AvergSize)]
 data2=[0 for i in xrange(AvergSize)]
 data3=[0 for i in xrange(AvergSize)]
 SavedAverg1=[0 for i in xrange(SaveAvergL)]
 SavedAverg2=[0 for i in xrange(SaveAvergL)]
 SavedAverg3=[0 for i in xrange(SaveAvergL)]
+Addres1='3CA308A0264D'
+Addres2='3CA3089EA12B' #target
+Addres3='3CA3089EA63B'
+Address=[Addres1,Addres2,Addres3]
+DictData={Addres1:data1,Addres2:data2,Addres3:data3}
+DictAverg={Addres1:SavedAverg1,Addres2:SavedAverg2,Addres3:SavedAverg3}
+DictFlags={Addres1:False,Addres2:False,Addres3:False}
+DictMedian={Addres1:[0,0],Addres2:[0,0],Addres3:[0,0]}
+
 
 RecevierData=[0,0]
 count=0
@@ -72,13 +81,6 @@ GPIO.output(LeftPin,False)
 GPIO.output(RightPin,False)
 GPIO.output(ForwardPin,False)
 GPIO.output(BackwardPin,False)
-Addres1='3CA308A0264D'
-Addres2='3CA3089EA12B' #target
-Addres3='3CA3089EA63B'
-Address=[Addres1,Addres2,Addres3]
-DictData={Addres1:data1,Addres2:data2,Addres3:data3}
-DictAverg={Addres1:Averg1,Addres2:Averg2,Addres3:Averg3}
-DictFlags={Addres1:False,Addres2:False,Addres3:False}
 
 f4=1
 f5=0
@@ -157,30 +159,59 @@ def FindBLE(StrInput):
      # temp=received_data.strip()
    ## Find_Index=received_data.find('OK+DIS0:')
     #print(Find_Index)
-def AvergRssi(Addr,RSSI,PrevAverg,AverSize,Data):
+def AvergRssi(Addr,RSSI,Averg,AverSize,Data,Median):
+       Median[0]=Median[1]
+       PrevAver=Averg[-1]
        Data.pop(0)
+       Averg.pop(0)
        try:
          IntRSSI=int(RSSI)
        except ValueError:
          IntRSSI=int(PrevAverg)
        Data.append(IntRSSI)  
-       PrevAverg=sum(Data)/AverSize
-       print("ADDRESS: " +Addr)
-       print("RSSI: %d\n"%(PrevAverg))
+       PrevAver=sum(Data)/AverSize
+       Averg.append(PrevAver)
+       aray=sorted(Averg)
+ #      Averg.pop()
 
-       return PrevAverg,Data
+      # n=len(aray)
+       Median[1]=aray[AverSize/2]
+       print("Iam aray: %d"%Median[1])
+
+#       Averg.append(PrevAver)
+       print("ADDRESS: " +Addr)
+       print("RSSI: %d\n"%(Averg[-1]))
+
+       return Averg,Data,Median
 initialization()
 while True :
 
-    success,received_data=SendCommand("AT+DISC?","OK+DISCE",10)
+    success,received_data=SendCommand("AT+DISC?","OK+DISCE",5)
     if success:
      # print("nono: "+received_data)
       DictFlags={Addres1:False,Addres2:False,Addres3:False}
       Dic_Addr_Rssi,AddresList=FindBLE(received_data)
       for addres in AddresList:
-          DictAverg[addres],DictData[addres]= AvergRssi(addres,Dic_Addr_Rssi[addres],DictAverg[addres],AvergSize,DictData[addres])
+          DictAverg[addres],DictData[addres],DictMedian[addres]= AvergRssi(addres,Dic_Addr_Rssi[addres],DictAverg[addres],AvergSize,DictData[addres],DictMedian[addres])
           DictFlags[addres]=True
-          print(sorted(DictData[addres]))
+         # aray=sorted(DictAverg[addres])
+         # n=len(aray)
+         # print("Iam aray: %d"%aray[n/2])
+      if DictFlags[Addres2]:
+          BarCount=display.ShowLCD_BarGraph(DictMedian[Addres2][1],-88,3,2)
+          print(DictMedian[Addres2])
+          if (DictAverg[Addres2][-1]-DictMedian[Addres2][1])<2:
+            GPIO.output(ForwardPin,False)
+            GPIO.output(BackwardPin,True)
+          elif  (DictAverg[Addres2][-1]-DictMedian[Addres2][1])>-2:
+            GPIO.output(ForwardPin,True)
+            GPIO.output(BackwardPin,False)
+          else:
+            GPIO.output(ForwardPin,False)
+            GPIO.output(BackwardPin,False)
+
+
+          
      # for i in AddresList:
       #  print("Addres: "+i)
        # print("RSSI: "+Dic_Addr_Rssi[i])
