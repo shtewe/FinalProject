@@ -56,6 +56,7 @@ DictData={Addres1:data1,Addres2:data2,Addres3:data3}
 DictAverg={Addres1:SavedAverg1,Addres2:SavedAverg2,Addres3:SavedAverg3}
 DictFlags={Addres1:False,Addres2:False,Addres3:False}
 DictMedian={Addres1:[0,0],Addres2:[0,0],Addres3:[0,0]}
+DictCon={Addres1:0,Addres3:0}
 
 
 RecevierData=[0,0]
@@ -64,7 +65,7 @@ count2=0
 Averg1=-40
 Averg2=-40
 Averg3=-40
-
+WaitConToReciver=5
 MinAverg=-45
 DisConFlag=0
 ConFlag=0
@@ -86,6 +87,7 @@ f4=1
 f5=0
 con1=1
 con2=1
+conect=5
 conect1=0
 conect2=0
 f2=0
@@ -176,17 +178,53 @@ def AvergRssi(Addr,RSSI,Averg,AverSize,Data,Median):
 
       # n=len(aray)
        Median[1]=aray[AverSize/2]
-       print("Iam aray: %d"%Median[1])
+      # print("Iam aray: %d"%Median[1])
 
 #       Averg.append(PrevAver)
        print("ADDRESS: " +Addr)
-       print("RSSI: %d\n"%(Averg[-1]))
+       print("RSSI: %d\n"%(Median[1]))
 
        return Averg,Data,Median
+def ConToReciver(adr,recevierData):
+    success,received_data=SendCommand("AT+CON"+adr,"OK+CONNA",10)
+    if success:
+      Count=0
+      print("Con To Reciver: "+adr)
+      received_data =""
+      while Count<WaitConToReciver:
+        try:
+          received_data +=ser.read()           #read serial por
+          sleep(0.03)
+          data_left =ser.inWaiting()          #check for remaining byte
+          received_data += ser.read(data_left)
+          Find_Index=received_data.find('START')
+          if Find_Index!=-1:
+            try:
+              indexx=int(received_data[Find_Index+5])
+              value=int(received_data[Find_Index+6:Find_Index+9])
+            except ValueError:
+              return False,recevierData
+            recevierData[indexx-1]=value
+            print("Iam rcevRssi: ")
+            print(recevierData)
+            GPIO.output(DisConPin,True)
+            sleep(0.03)
+            GPIO.output(DisConPin,False)
+            return True,recevierData
+          sleep(0.03)
+        except ValueError:
+          print("I Can't Read")
+          return False,recevierData
+    print("TimeOut")
+    return False,recevierData
+
+
+
 initialization()
+sleep(1)
 while True :
 
-    success,received_data=SendCommand("AT+DISC?","OK+DISCE",5)
+    success,received_data=SendCommand("AT+DISC?","OK+DISCE",10)
     if success:
      # print("nono: "+received_data)
       DictFlags={Addres1:False,Addres2:False,Addres3:False}
@@ -199,7 +237,7 @@ while True :
          # print("Iam aray: %d"%aray[n/2])
       if DictFlags[Addres2]:
           BarCount=display.ShowLCD_BarGraph(DictMedian[Addres2][1],-88,3,2)
-          print(DictMedian[Addres2])
+         # print(DictMedian[Addres2])
           if (DictAverg[Addres2][-1]-DictMedian[Addres2][1])<2:
             GPIO.output(ForwardPin,False)
             GPIO.output(BackwardPin,True)
@@ -210,8 +248,22 @@ while True :
             GPIO.output(ForwardPin,False)
             GPIO.output(BackwardPin,False)
 
-
-          
+      if conect==10:
+        if (DictCon[Addres1])and(DictCon[Addres3]):
+           DictCon[Addres1]=0
+           DictCon[Addres3]=0
+           conect=0
+        else:
+           if DictFlags[Addres1]and not(DictCon[Addres1]):
+              DictCon[Addres1],RecevierData= ConToReciver(Addres1,RecevierData)
+              sleep(2)
+           if DictFlags[Addres3]and not(DictCon[Addres3]):
+              DictCon[Addres3],RecevierData= ConToReciver(Addres3,RecevierData)
+              sleep(2)
+      elif (DictFlags[Addres1] and DictFlags[Addres3]):
+        conect+=1
+     ## print("Iam Conecnt count ")
+     ## print(conect)
      # for i in AddresList:
       #  print("Addres: "+i)
        # print("RSSI: "+Dic_Addr_Rssi[i])
