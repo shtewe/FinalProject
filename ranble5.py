@@ -178,11 +178,11 @@ def AvergRssi(Addr,RSSI,Averg,AverSize,Data,Median):
 
       # n=len(aray)
        Median[1]=aray[AverSize/2]
-      # print("Iam aray: %d"%Median[1])
+       print("Iam aray: %d"%Median[1])
 
 #       Averg.append(PrevAver)
        print("ADDRESS: " +Addr)
-       print("RSSI: %d\n"%(Median[1]))
+       print("RSSI: %d\n"%(Averg[-1]))
 
        return Averg,Data,Median
 def ConToReciver(adr,recevierData):
@@ -197,6 +197,8 @@ def ConToReciver(adr,recevierData):
           sleep(0.03)
           data_left =ser.inWaiting()          #check for remaining byte
           received_data += ser.read(data_left)
+          print("Iam received_data in ConToReciver ")
+          print(received_data)
           Find_Index=received_data.find('START')
           if Find_Index!=-1:
             try:
@@ -218,10 +220,36 @@ def ConToReciver(adr,recevierData):
     print("TimeOut")
     return False,recevierData
 
+def BarCount(Value):
+    MaxV=-83
+    if Value >-43:
+      Value=-43
+    elif Value <MaxV:
+      Value=MaxV
 
+    if Value>-55:
+       count=10
+       temp=-55
+       step=2
+    elif Value <=-55 and Value >=-73:
+       count=3
+       temp=-73
+       step=3
+    else:
+       count=0
+       temp=MaxV #83
+       step=5
 
+    while(temp<=Value):
+        count+=1
+        temp+=step
+    if count>16:
+       count=16
+    return count
 initialization()
 sleep(1)
+#display.ShowLCD_BarGraph(5,2)
+
 while True :
 
     success,received_data=SendCommand("AT+DISC?","OK+DISCE",10)
@@ -236,18 +264,22 @@ while True :
          # n=len(aray)
          # print("Iam aray: %d"%aray[n/2])
       if DictFlags[Addres2]:
-          BarCount=display.ShowLCD_BarGraph(DictMedian[Addres2][1],-88,3,2)
+         # BarCount=display.ShowLCD_BarGraph(DictMedian[Addres2][1],-88,3,2)
          # print(DictMedian[Addres2])
-          if (DictAverg[Addres2][-1]-DictMedian[Addres2][1])<2:
+          Bar=BarCount(DictMedian[Addres2][1])
+          PrevBar=BarCount(DictMedian[Addres2][0])
+          display.ShowLCD_BarGraph(Bar,2)
+          print("Iam Bar and prevbar: ",Bar,PrevBar)
+          if (Bar-PrevBar)>0:
             GPIO.output(ForwardPin,False)
             GPIO.output(BackwardPin,True)
-          elif  (DictAverg[Addres2][-1]-DictMedian[Addres2][1])>-2:
+          elif  (Bar-PrevBar)<0:
             GPIO.output(ForwardPin,True)
             GPIO.output(BackwardPin,False)
           else:
             GPIO.output(ForwardPin,False)
             GPIO.output(BackwardPin,False)
-
+          sleep(1)
       if conect==10:
         if (DictCon[Addres1])and(DictCon[Addres3]):
            DictCon[Addres1]=0

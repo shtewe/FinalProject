@@ -38,9 +38,9 @@ ser.write("AT+PSWD123456")
 sleep(0.03)
 AvergSize=5
 SaveAvergL=2
-data1=[0 for i in xrange(AvergSize)]
-data2=[0 for i in xrange(AvergSize)]
-data3=[0 for i in xrange(AvergSize)]
+data1=[]
+data2=[]
+data3=[]
 SavedAverg1=[0 for i in xrange(SaveAvergL)]
 SavedAverg2=[0 for i in xrange(SaveAvergL)]
 SavedAverg3=[0 for i in xrange(SaveAvergL)]
@@ -73,7 +73,7 @@ Addres2='3CA3089EA12B' #target
 Addres3='3CA3089EA63B'
 Address=[Addres1,Addres2,Addres3]
 f4=1
-f5=1
+f5=0
 con1=1
 con2=1
 conect1=0
@@ -154,21 +154,19 @@ def FindBLE(StrInput):
 
 
 def AvergRssi(Addr,RSSI,PrevAverg,AverSize,Data):
-       Data.pop(0)
-       try:
-         IntRSSI=int(RSSI)
-       except ValueError:
-         IntRSSI=int(PrevAverg)
-      ## PrivData=int(Data[-1])
-      # print( PrivData,PrevAverg)
-     ##  if (((IntRSSI- PrivData >delta)or(PrivData-IntRSSI>delta))and (PrevAverg<MinAver)):
-      ##   IntRSSI=int(PrevAverg)
-       Data.append(IntRSSI)  
-       PrevAverg=sum(Data)/AverSize
-       print("ADDRESS: " +Addr)
-       print("RSSI: %d\n"%(PrevAverg))
+    try:
+      IntRSSI=int(RSSI)
+    except ValueError:
+      IntRSSI=int(PrevAverg)
+    Data.append(IntRSSI)  
+    if len(Data)==AverSize:
+      PrevAverg=sum(Data)/AverSize
+      print("ADDRESS: " +Addr)
+      print("RSSI: %d\n"%(PrevAverg))
+      Data=[]
 
-       return PrevAverg
+
+    return PrevAverg,Data
 
 
 
@@ -222,7 +220,7 @@ def GetReceiverData(adr):
   while cont<5:
       try: 
          ser.write("AT+CON"+adr)
-         sleep(0.5)
+         sleep(1)
          received_data =ser.read()           #read serial por
          sleep(0.03)
          data_left =ser.inWaiting()          #check for remaining byte
@@ -256,15 +254,15 @@ def GetReceiverData(adr):
 
 
 while True :
-      
     received_data =ser.read()           #read serial por
     sleep(0.03)
     data_left =ser.inWaiting()          #check for remaining byte
     received_data += ser.read(data_left)
+
      # temp=received_data.strip()
     Find_Index=received_data.find('OK+DIS0:')
     #print(Find_Index)
-   # print(received_data)
+    print(received_data)
   #  if ConFlag :
    #    if received_data.find('DONE')!=-1:
     #      ConFlag=0
@@ -297,7 +295,7 @@ while True :
          f1=1
         ## temp=Averg1
          SavedAverg1.pop(0)
-         Averg1=AvergRssi(Addres1,Dic_Addr_Rssi[Addres1],Averg1,AvergSize,data1)  # (Addr,RSSI,PrevAverg,AverSize,Data)
+         Averg1,data1=AvergRssi(Addres1,Dic_Addr_Rssi[Addres1],Averg1,AvergSize,data1)  # (Addr,RSSI,PrevAverg,AverSize,Data)
          SavedAverg1.append(Averg1)
         ## if Averg1< MinAverg:
          ##   Delta=MinDelta
@@ -310,7 +308,7 @@ while True :
          f2=1
         ## temp=Averg2
          SavedAverg2.pop(0)
-         Averg2=AvergRssi(Addres2,Dic_Addr_Rssi[Addres2],Averg2,AvergSize,data2)
+         Averg2,data2=AvergRssi(Addres2,Dic_Addr_Rssi[Addres2],Averg2,AvergSize,data2)
          SavedAverg2.append(Averg2)
         ## if Averg2< MinAverg:
          ##   Delta=MinDelta
@@ -323,7 +321,7 @@ while True :
          f3=1
        ##  temp=Averg3
          SavedAverg3.pop(0)
-         Averg3=AvergRssi(Addres3,Dic_Addr_Rssi[Addres3],Averg3,AvergSize,data3)
+         Averg3,data3=AvergRssi(Addres3,Dic_Addr_Rssi[Addres3],Averg3,AvergSize,data3)
          SavedAverg3.append(Averg3)
 
        ##  if Averg3< MinAverg:
