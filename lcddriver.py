@@ -117,7 +117,9 @@ class lcd:
       self.lcd_write(LCD_CLEARDISPLAY)
       self.lcd_write(LCD_RETURNHOME)
  
-   def ShowLCD_BarGraph(self,Value,MaxV,Step,line):
+#   def ShowLCD_BarGraph(self,Value,MaxV,Step,line):
+   def ShowLCD_BarGraph(self,BarCount,line):
+
        if line == 1:
           LCD_Address=0x80
        if line == 2:
@@ -130,21 +132,21 @@ class lcd:
      #  self.lcd_write(LCD_Address)
        Addr=LCD_Address
        AddrMax=Addr+0x0f
-       Value+=40
-       MaxV+=40
+      # Value+=40
+      # MaxV+=40
        count=0
-       if Value < MaxV:
-          Value=-1*MaxV
-       elif Value >0:
-          Value =0
-       else:
-          Value*=-1
+      # if Value < MaxV:
+      #    Value=-1*MaxV
+      # elif Value >0:
+      #    Value =0
+      # else:
+      #    Value*=-1
       
-       Value=(-1*MaxV)-Value
-       while(Value>0):
+      # Value=(-1*MaxV)-Value
+       while(count<BarCount):
           self.lcd_write(Addr)
           self.lcd_write(0xff,Rs)
-          Value-=Step
+         # Value-=Step
           Addr+=1
           count+=1
       
@@ -152,4 +154,4 @@ class lcd:
           self.lcd_write(Addr)
           self.lcd_write(0xfe,Rs)
           Addr+=1
-       return count
+       

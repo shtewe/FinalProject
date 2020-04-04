@@ -82,12 +82,12 @@ GPIO.output(LeftPin,False)
 GPIO.output(RightPin,False)
 GPIO.output(ForwardPin,False)
 GPIO.output(BackwardPin,False)
- 
+
 f4=1
 f5=0
 con1=1
 con2=1
-conect=0
+conect=5
 conect1=0
 conect2=0
 f2=0
@@ -181,25 +181,16 @@ def AvergRssi(Addr,RSSI,Averg,AverSize,Data,Median):
        print("Iam aray: %d"%Median[1])
 
 #       Averg.append(PrevAver)
-       if Addr==Addres1:
-          rec="Recevier 1 (on the right)"
-       elif Addr==Addres3:
-          rec="Recevier 3 (on the left)"
-       else:
-          rec="Target"
-
-
-       print("From: " +rec)
+       print("ADDRESS: " +Addr)
        print("RSSI: %d\n"%(Averg[-1]))
 
        return Averg,Data,Median
 def ConToReciver(adr,recevierData):
     success,received_data=SendCommand("AT+CON"+adr,"OK+CONNA",10)
-    received_data =""
     if success:
       Count=0
       print("Con To Reciver: "+adr)
-     # received_data =""
+      received_data =""
       while Count<WaitConToReciver:
         try:
           received_data +=ser.read()           #read serial por
@@ -222,131 +213,35 @@ def ConToReciver(adr,recevierData):
             sleep(0.03)
             GPIO.output(DisConPin,False)
             return True,recevierData
-          Find_Index=received_data.find('OK+CONNF')
-          if Find_Index!=-1:
-             return False,recevierData
-
-
           sleep(0.03)
         except ValueError:
           print("I Can't Read")
           return False,recevierData
-        Count+=1
     print("TimeOut")
     return False,recevierData
 
-def BarCount(Value):
-    '''
-    if Value>-50:
-       count=16
-    elif -50>=Value and Value>-60:
-       count=14
-    elif -60>=Value and Value>-65:
-      count=10
-    elif -65>=Value and Value>-70:
-      count= 7
-    elif -70>=Value and Value>-75:
-      count= 5
-    elif -75>= Value and Value>-80:
-      count= 2
-    else:
-      count= 0
-    print("Iam Value: ",Value,"Iam count: ",count)
-    return count
-
-    '''
-    MaxV=-83
-    if Value >-43:
-      Value=-43
-    elif Value <MaxV:
-      Value=MaxV
-
-    if Value>-55:
-       count=10
-       temp=-55
-       step=2
-    elif Value <=-55 and Value >=-73:
-       count=3
-       temp=-73
-       step=3
-    else:
-       count=0
-       temp=MaxV #83
-       step=5
-
-    while(temp<=Value):
-        count+=1
-        temp+=step
-    if count>16:
-       count=16
-    return count
-       
-def CheackIfCloser(Addr,step=0):
-    Bar=BarCount(DictAverg[Addr][-1])
-    PrevBar=BarCount(DictAverg[Addr][-2])
-    close=False
-    goaway=False
-   # print("Iam Bar and prevbar: ",Bar,PrevBar)
-    if (Bar-PrevBar)<=(-1*step):
-         goaway=True
-    elif (Bar-PrevBar)>=step:
-         close=True
-    return close,goaway
-
-
-def DirectionShow():
-   # CloseTo1,IsGoAway1= CheackIfCloser(Addres1)
-    CloseTo2,IsGoAway2= CheackIfCloser(Addres2)
-   # CloseTo3,IsGoAway3= CheackIfCloser(Addres3)
-    if CloseTo2 :
-       print("forward")
-       GPIO.output(ForwardPin,True)
-       GPIO.output(BackwardPin,False)
-    elif IsGoAway2:
-       GPIO.output(ForwardPin,False)
-       GPIO.output(BackwardPin,True)
-       print("backward")
-
-
-'''
-def DirectionShow():
-    CloseTo1,IsGoAway1= CheackIfCloser(Addres1)
-    CloseTo2,IsGoAway2= CheackIfCloser(Addres2)
-    CloseTo3,IsGoAway3= CheackIfCloser(Addres3)
-    if (RecevierData[0])>(RecevierData[1]):
-       if (CloseTo2 and CloseTo3 and IsGoAway1)or(CloseTo1 and IsGoAway2 and IsGoAway3)or((DictAverg[Addres1][-1]>DictAverg[Addres3][-1])and IsGoAway1 and IsGoAway2 and IsGoAway3) :
-         GPIO.output(LeftPin,True)
-         GPIO.output(RightPin,False)
-         print("left1")
-       else:
-         GPIO.output(LeftPin,False)
-         GPIO.output(RightPin,True)
-         print("right1")
-    else:
-      if (DictAverg[Addres1][-1]>DictAverg[Addres3][-1])and((CloseTo2 and CloseTo3 and IsGoAway1)or(IsGoAway2 and IsGoAway3)):
-        GPIO.output(LeftPin,True)
-        GPIO.output(RightPin,False)
-        print("left2")
-      else:
-        GPIO.output(LeftPin,False)
-        GPIO.output(RightPin,True)
-        print("right2")
-    if CloseTo2 :
-       print("forward")
-       GPIO.output(ForwardPin,True)
-       GPIO.output(BackwardPin,False)
-    elif IsGoAway2:
-       GPIO.output(ForwardPin,False)
-       GPIO.output(BackwardPin,True)
-       print("backward")
-
-'''
-
-
+def BarCount(Value,MaxV):
+   if Value>-40:
+     Value=-40
+   elif Value<MaxV:
+     Value=MaxV
+   if Value>-55:
+     count=10
+     temp=-55
+     step=2
+   elif Value<=-55 and Value>=-73:
+     count=3
+     temp=-73
+     step=3
+   else:
+     count=0
+     temp=MaxV
+     step=5
+  
 
 initialization()
 sleep(1)
-#display.ShowLCD_BarGraph(5,2)
+display.ShowLCD_BarGraph(5,2)
 
 while True :
 
@@ -364,28 +259,20 @@ while True :
       if DictFlags[Addres2]:
          # BarCount=display.ShowLCD_BarGraph(DictMedian[Addres2][1],-88,3,2)
          # print(DictMedian[Addres2])
-         # Bar=BarCount(DictMedian[Addres2][1])
-         # PrevBar=BarCount(DictMedian[Addres2][0])
-         
-          Bar=BarCount(DictAverg[Addres2][-1])
-          PrevBar=BarCount(DictAverg[Addres2][-2])
-          display.ShowLCD_BarGraph(Bar,2)
-          DirectionShow()
-         # print("Iam Bar and prevbar: ",Bar,PrevBar)
-         # if (Bar-PrevBar)<0:
-         #   GPIO.output(ForwardPin,False)
-         #   GPIO.output(BackwardPin,True)
-         # elif  (Bar-PrevBar)>0:
-         #   GPIO.output(ForwardPin,True)
-         #   GPIO.output(BackwardPin,False)
-         # else:
-         #   GPIO.output(ForwardPin,False)
-         #   GPIO.output(BackwardPin,False)
-          sleep(1)
+          if (DictAverg[Addres2][-1]-DictMedian[Addres2][1])<2:
+            GPIO.output(ForwardPin,False)
+            GPIO.output(BackwardPin,True)
+          elif  (DictAverg[Addres2][-1]-DictMedian[Addres2][1])>-2:
+            GPIO.output(ForwardPin,True)
+            GPIO.output(BackwardPin,False)
+          else:
+            GPIO.output(ForwardPin,False)
+            GPIO.output(BackwardPin,False)
+
       if conect==10:
         if (DictCon[Addres1])and(DictCon[Addres3]):
-          # DictCon[Addres1]=0
-          # DictCon[Addres3]=0
+           DictCon[Addres1]=0
+           DictCon[Addres3]=0
            conect=0
         else:
            if DictFlags[Addres1]and not(DictCon[Addres1]):
