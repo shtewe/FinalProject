@@ -5,9 +5,14 @@ import lcddriver
 from time import sleep
 import RPi.GPIO as GPIO
  
+ 
+ 
+ 
+##########################GPIO Control#################################
 GPIO.setwarnings(False)
 
 GPIO.setmode(GPIO.BOARD)
+
 DisConPin=7
 LeftPin=13
 RightPin=11
@@ -21,30 +26,27 @@ GPIO.setup(OutOfRange, GPIO.OUT)
 GPIO.setup(DisConPin, GPIO.OUT)
 GPIO.setup(LeftPin, GPIO.OUT)
 GPIO.setup(RightPin, GPIO.OUT)
+
+GPIO.output(OutOfRange,False)
+GPIO.output(DisConPin,False)
+GPIO.output(LeftPin,False)
+GPIO.output(RightPin,False)
+GPIO.output(ForwardPin,False)
+GPIO.output(BackwardPin,False)
+
+
+############Screan#############################################################
+
 display=lcddriver.lcd()
-#GPIO.setwarnings(False)
 display.lcd_display_string("The Target Range",1)
 
 ser = serial.Serial ("/dev/ttyS0",9600,timeout=2) #Open port with baud rate
-#ser.write("AT+RENEW")
-#sleep(1)
-#ser.write("AT+RESET")
-#sleep(0.03)
-#ser.write("AT+IMME1")
-#sleep(0.03)
-#ser.write("AT+ROLE1")
-#sleep(0.03)
-#ser.write("AT+PSWD123456")
-#sleep(0.03)
-#ser.write("AT+SCAN0")
-#sleep(0.03)
 
+BarCount=0
+PrevBarCount=0
 
-AvergSize=5
+###############Addres##########################
 SaveAvergL=5
-data1=[0 for i in xrange(AvergSize)]
-data2=[0 for i in xrange(AvergSize)]
-data3=[0 for i in xrange(AvergSize)]
 SavedAverg1=[0 for i in xrange(SaveAvergL)]
 SavedAverg2=[0 for i in xrange(SaveAvergL)]
 SavedAverg3=[0 for i in xrange(SaveAvergL)]
@@ -52,61 +54,59 @@ Addres1='3CA308A0264D'
 Addres2='3CA3089EA12B' #target
 Addres3='3CA3089EA63B'
 Address=[Addres1,Addres2,Addres3]
-DictData={Addres1:data1,Addres2:data2,Addres3:data3}
-DictAverg={Addres1:SavedAverg1,Addres2:SavedAverg2,Addres3:SavedAverg3}
-DictFlags={Addres1:False,Addres2:False,Addres3:False}
-DictMedian={Addres1:[0,0],Addres2:[0,0],Addres3:[0,0]}
-DictCon={Addres1:0,Addres3:0}
-
-
-RecevierData=[0,0]
-count=0
-count2=0
-Averg1=-40
-Averg2=-40
-Averg3=-40
-WaitConToReciver=5
-MinAverg=-45
-DisConFlag=0
-ConFlag=0
-BarCount=0
-PrevBarCount=0
-TimeOut=0
-MaxDelta=0
-MinDelta=0
-flagRecv=0
-Dic_Addr_Rssi={}
-GPIO.output(OutOfRange,False)
-GPIO.output(DisConPin,False)
-GPIO.output(LeftPin,False)
-GPIO.output(RightPin,False)
-GPIO.output(ForwardPin,False)
-GPIO.output(BackwardPin,False)
- 
-f4=1
-f5=0
-con1=1
-con2=1
-conect=0
-conect1=0
-conect2=0
-f2=0
-Step=2
-MaxV=-32
+AddrName={Addres1:"Recevier 1 (on the right)",Addres2:"Target",Addres3:"Recevier 3 (on the left)"}
 AddresList=[]
-#CloseTo1=0
-#CloseTo2=0
-#CloseTo3=0
+#######################Data################################################
+AvergSize=5
+data1=[0 for i in xrange(AvergSize)]
+data2=[0 for i in xrange(AvergSize)]
+data3=[0 for i in xrange(AvergSize)]
+DictMedian={Addres1:[0,0],Addres2:[0,0],Addres3:[0,0]} #median filter is using after averg filter (maby we will not used)
+DictAverg={Addres1:SavedAverg1,Addres2:SavedAverg2,Addres3:SavedAverg3} #data after filter
+DictData={Addres1:data1,Addres2:data2,Addres3:data3} #data befor fliter
+
+#Averg1=-40
+#Averg2=-40
+#Averg3=-40
+#MinAverg=-45
+
+########################Coniction to recevres#############################
+DictFlags={Addres1:False,Addres2:False,Addres3:False} #flag to show if we find recever in scanning
+DictCon={Addres1:0,Addres3:0} #for conction to recevers
+RecevierData=[0,0]
+#count=0
+#count2=0
+
+WaitConToReciver=5
+#DisConFlag=0
+#ConFlag=0
+#MaxDelta=0
+#MinDelta=0
+#flagRecv=0
+Dic_Addr_Rssi={} #after fun FindBLE
+#f4=1
+#f5=0
+#con1=1
+#con2=1
+conect=0 #for next conection to recvers
+#conect1=0
+#conect2=0
+#f2=0
+#Step=2
+#MaxV=-32
+
+########for send Comand#############
+#TimeOut=0
+
+
 
 def SendCommand(command,EndOfCommand,TimeOut):
-    ser.write(command)
+    ser.write(command) 
     sleep(0.03)
     wait=0
     received_data =""
 
     while wait<TimeOut:
-      # print("Iam Wait ",wait)
-      # print("Iam koko ",received_data)
        try:
          received_data +=ser.read()           #read serial por
          sleep(0.03)
@@ -131,10 +131,10 @@ def initialization():
    v,b=SendCommand("AT+IMME1","OK+Set:1",10)
    if v:
     print(b)
-   v,b=SendCommand("AT+ROLE1","OK+Set:1",10)
+   v,b=SendCommand("AT+ROLE1","OK+Set:1",10) #Master Mode
    if v:
     print(b)
-   v,b=SendCommand("AT+PASS123456","OK+Set:123456",10)
+   v,b=SendCommand("AT+PASS123456","OK+Set:123456",10) #passowerd
    if v:
     print(b)
 #   v,b=SendCommand("AT+RESET","OK+RESET",10)
@@ -147,7 +147,7 @@ def initialization():
 #   if v:
 #    print(b)
 
-def FindBLE(StrInput):
+def FindBLE(StrInput): #func to git a dict of BLE address and RSSI values
     dic={}
     adrList=[]
     temp=StrInput.split('OK+DIS0:')
@@ -158,36 +158,34 @@ def FindBLE(StrInput):
          adrList.append(addr)
     return dic,adrList
 
-     # temp=received_data.strip()
-   ## Find_Index=received_data.find('OK+DIS0:')
-    #print(Find_Index)
+
 def AvergRssi(Addr,RSSI,Averg,AverSize,Data,Median):
-       Median[0]=Median[1]
-       PrevAver=Averg[-1]
+       Median[0]=Median[1] #previous Value of Median filter
+       PrevAver=Averg[-1]  #previous Value of Averg filter
        Data.pop(0)
        Averg.pop(0)
        try:
          IntRSSI=int(RSSI)
        except ValueError:
          IntRSSI=int(PrevAverg)
-       Data.append(IntRSSI)  
-       PrevAver=sum(Data)/AverSize
-       Averg.append(PrevAver)
+       Data.append(IntRSSI)  #adding a new value to end of the list 
+       PrevAver=sum(Data)/AverSize  
+       Averg.append(PrevAver) 
        aray=sorted(Averg)
  #      Averg.pop()
 
       # n=len(aray)
-       Median[1]=aray[AverSize/2]
-       print("Iam aray: %d"%Median[1])
+       Median[1]=aray[AverSize/2] #get a new median Value
+       print("Iam a New Median : %d"%Median[1])
 
 #       Averg.append(PrevAver)
-       if Addr==Addres1:
-          rec="Recevier 1 (on the right)"
-       elif Addr==Addres3:
-          rec="Recevier 3 (on the left)"
-       else:
-          rec="Target"
-
+       #if Addr==Addres1:
+        #  rec="Recevier 1 (on the right)"
+       #elif Addr==Addres3:
+       #   rec="Recevier 3 (on the left)"
+       #else:
+        #  rec="Target"
+       rec=AddrName[Addr]
 
        print("From: " +rec)
        print("RSSI: %d\n"%(Averg[-1]))
@@ -198,7 +196,8 @@ def ConToReciver(adr,recevierData):
     received_data =""
     if success:
       Count=0
-      print("Con To Reciver: "+adr)
+      recadr=AddrName[adr]
+      print("Con To: "+recadr)
      # received_data =""
       while Count<WaitConToReciver:
         try:
@@ -349,7 +348,6 @@ sleep(1)
 #display.ShowLCD_BarGraph(5,2)
 
 while True :
-
     success,received_data=SendCommand("AT+DISC?","OK+DISCE",10)
     if success:
      # print("nono: "+received_data)
@@ -372,15 +370,7 @@ while True :
           display.ShowLCD_BarGraph(Bar,2)
           DirectionShow()
          # print("Iam Bar and prevbar: ",Bar,PrevBar)
-         # if (Bar-PrevBar)<0:
-         #   GPIO.output(ForwardPin,False)
-         #   GPIO.output(BackwardPin,True)
-         # elif  (Bar-PrevBar)>0:
-         #   GPIO.output(ForwardPin,True)
-         #   GPIO.output(BackwardPin,False)
-         # else:
-         #   GPIO.output(ForwardPin,False)
-         #   GPIO.output(BackwardPin,False)
+  
           sleep(1)
       if conect==10:
         if (DictCon[Addres1])and(DictCon[Addres3]):
@@ -396,10 +386,6 @@ while True :
               sleep(2)
       elif (DictFlags[Addres1] and DictFlags[Addres3]):
         conect+=1
-     ## print("Iam Conecnt count ")
-     ## print(conect)
-     # for i in AddresList:
-      #  print("Addres: "+i)
-       # print("RSSI: "+Dic_Addr_Rssi[i])
+
 
 
