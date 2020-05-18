@@ -44,7 +44,9 @@ ser = serial.Serial ("/dev/ttyS0",9600,timeout=2) #Open port with baud rate
 
 BarCount=0
 PrevBarCount=0
-
+MIN_RSSI=-80
+MAX_RSSI=-60
+numLevels=16
 ###############Addres##########################
 SaveAvergL=5
 SavedAverg1=[0 for i in xrange(SaveAvergL)]
@@ -58,6 +60,7 @@ AddrName={Addres1:"Recevier 1 (on the right)",Addres2:"Target",Addres3:"Recevier
 AddresList=[]
 #######################Data################################################
 AvergSize=5
+Delta=5
 data1=[0 for i in xrange(AvergSize)]
 data2=[0 for i in xrange(AvergSize)]
 data3=[0 for i in xrange(AvergSize)]
@@ -156,7 +159,7 @@ def FindBLE(StrInput): #func to git a dict of BLE address and RSSI values
        if addr in Address:
          dic[addr]=temp[i][20:24]
          adrList.append(addr)
-    return dic,adrList
+    return dic,adrList #return a dic of rssi and list of addr
 
 
 def AvergRssi(Addr,RSSI,Averg,AverSize,Data,Median):
@@ -170,13 +173,38 @@ def AvergRssi(Addr,RSSI,Averg,AverSize,Data,Median):
          IntRSSI=int(PrevAverg)
        Data.append(IntRSSI)  #adding a new value to end of the list 
        PrevAver=sum(Data)/AverSize  
+       ############
+       if((((PrevAver-IntRSSI)**2)>Delta) and (PrevAver<-66)):
+           PrevAver=Averg[-1]     
+       
+       ###########
        Averg.append(PrevAver) 
        aray=sorted(Averg)
  #      Averg.pop()
 
       # n=len(aray)
-       Median[1]=aray[AverSize/2] #get a new median Value
-       print("Iam a New Median : %d"%Median[1])
+      
+      ####################################################################################
+       #rec=AddrName[Addr]
+
+       #print("From: " +rec)
+       #print("RSSI: %d\n"%(Averg[-1]))
+       
+       #Median[1]=aray[AverSize/2] #get a new median Value
+       #print("Iam a New Median : %d"%Median[1])
+      #####################################################################################
+
+        ######
+
+       rec=AddrName[Addr]
+
+       print("From: " +rec)
+       print("RSSI: %d\n"%(Averg[-1]))
+       print("Iam IntRSSI: %d\n"%(IntRSSI))
+       ##Median[1]=aray[AverSize/2] #get a new median Value
+       ##print("Iam a New Median : %d"%Median[1])
+       print("#############################################")
+       #####
 
 #       Averg.append(PrevAver)
        #if Addr==Addres1:
@@ -185,12 +213,9 @@ def AvergRssi(Addr,RSSI,Averg,AverSize,Data,Median):
        #   rec="Recevier 3 (on the left)"
        #else:
         #  rec="Target"
-       rec=AddrName[Addr]
 
-       print("From: " +rec)
-       print("RSSI: %d\n"%(Averg[-1]))
 
-       return Averg,Data,Median
+       return Averg,Data,Median #return a dic of averg, data after updating , adic of median filter
 def ConToReciver(adr,recevierData):
     success,received_data=SendCommand("AT+CON"+adr,"OK+CONNA",10)
     received_data =""
@@ -234,8 +259,19 @@ def ConToReciver(adr,recevierData):
     print("TimeOut")
     return False,recevierData
 
-def BarCount(Value):
-    '''
+def BarCount(rssi):
+   if(rssi<=MIN_RSSI): #-100
+      return 0
+   elif(rssi>=MAX_RSSI): #-55
+      return  numLevels 
+   else:
+      inputRange=MAX_RSSI-MIN_RSSI
+      outputRange=numLevels 
+      return (rssi-MIN_RSSI)*outputRange/inputRange
+
+
+
+   '''
     if Value>-50:
        count=16
     elif -50>=Value and Value>-60:
@@ -253,7 +289,7 @@ def BarCount(Value):
     print("Iam Value: ",Value,"Iam count: ",count)
     return count
 
-    '''
+    
     MaxV=-83
     if Value >-43:
       Value=-43
@@ -278,7 +314,9 @@ def BarCount(Value):
         temp+=step
     if count>16:
        count=16
+    
     return count
+   '''
        
 def CheackIfCloser(Addr,step=0):
     Bar=BarCount(DictAverg[Addr][-1])
@@ -362,8 +400,8 @@ while True :
       if DictFlags[Addres2]:
          # BarCount=display.ShowLCD_BarGraph(DictMedian[Addres2][1],-88,3,2)
          # print(DictMedian[Addres2])
-         # Bar=BarCount(DictMedian[Addres2][1])
-         # PrevBar=BarCount(DictMedian[Addres2][0])
+          #Bar=BarCount(DictMedian[Addres2][1])
+          #PrevBar=BarCount(DictMedian[Addres2][0])
          
           Bar=BarCount(DictAverg[Addres2][-1])
           PrevBar=BarCount(DictAverg[Addres2][-2])
